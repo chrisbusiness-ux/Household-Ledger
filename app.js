@@ -178,8 +178,8 @@ function viewAuth(){
     <p>We sent a link to <b>${esc(email)}</b>. Open it, then come back and tap Continue. Check your spam folder if you don't see it.</p>
     ${authMsg ? `<div class="banner">${esc(authMsg)}</div>` : ""}
     <div class="links"><button class="primary" data-act="verified">Continue</button><button data-act="resend">Send the link again</button><button class="ghost" data-act="signout">Sign out</button></div></div>`;
-  if (screen === "notmember") return `<div class="auth panel"><h2>This email isn't allowed yet</h2>
-    <p>You're signed in as <b>${esc(email)}</b>, but the Firestore rules in Firebase list a different email. Put this email in the rules, publish them, then tap Try again.</p>
+  if (screen === "notmember") return `<div class="auth panel"><h2>This email isn't approved yet</h2>
+    <p>You're signed in as <b>${esc(email)}</b>, but this email isn't on the app's approved list. Ask the person who runs this app to add it, then tap Try again.</p>
     <div class="links"><button class="primary" data-act="retry">Try again</button><button class="ghost" data-act="signout">Sign out</button></div></div>`;
   const title = authMode === "signup" ? "Create your account" : authMode === "reset" ? "Reset your password" : "Sign in";
   return `<div class="auth"><div class="panel"><h2>${title}</h2>
@@ -229,7 +229,7 @@ function viewOverview(){
   h += `<section class="hero">
     <svg class="ring" viewBox="0 0 130 130" role="img" aria-label="${budget ? pct(spent,budget) + "% of budget used" : "No budget set"}">
       <circle cx="65" cy="65" r="${R}" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="12"/>
-      <circle cx="65" cy="65" r="${R}" fill="none" stroke="${ringCol}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(C*frac).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 65 65)"/>
+      ${frac > 0 ? `<circle cx="65" cy="65" r="${R}" fill="none" stroke="${ringCol}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(C*frac).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 65 65)"/>` : ""}
       <text x="65" y="63" text-anchor="middle" style="font:800 26px var(--f-display)">${budget ? pct(spent,budget) + "%" : "—"}</text>
       <text x="65" y="83" text-anchor="middle" style="font:600 10px var(--f-body);letter-spacing:.08em;opacity:.8">OF BUDGET</text></svg>
     <div class="txt"><div class="eyebrow">${esc(monthName(month))}</div>
@@ -736,16 +736,31 @@ function itemRow(it){
 
 /* ---------- data ---------- */
 function stopData(){ unsubs.forEach(u => u()); unsubs = []; S.got = {}; S.fresh = {}; S.confirmedEmpty = false; S.expenses = []; S.income = []; S.cats = []; S.items = []; S.trips = []; S.cards = []; }
-function startData(){
+// Your own ledger lives at households/home; each approved friend gets a private one at ledgers/<their id>.
+// The app tries the remembered location first, then the other, and keeps whichever Firebase allows.
+let dataGen = 0;
+function rememberPath(uid, p){ try { localStorage.setItem("ledgerPath:" + uid, p); } catch(e){} }
+function recallPath(uid){ try { return localStorage.getItem("ledgerPath:" + uid); } catch(e){ return null; } }
+function startData(path){
   stopData();
-  H = fs.collection("households").doc("home");
+  const uid = auth.currentUser.uid, mine = "ledgers/" + uid;
+  path = path || recallPath(uid) || "households/home";
+  const gen = ++dataGen;
+  H = fs.doc(path);
   const map = s => s.docs.map(d => ({ id: d.id, ...d.data() }));
-  const fail = e => { stopData(); screen = e && e.code === "permission-denied" ? "notmember" : "error"; authMsg = e && e.message || ""; render(); };
+  let tried = false;
+  const fail = e => {
+    if (gen !== dataGen) return;
+    if (e && e.code === "permission-denied" && !tried){ tried = true; const other = path === "households/home" ? mine : "households/home";
+      if (!startData.alt){ startData.alt = true; return startData(other); } }
+    startData.alt = false; stopData(); screen = e && e.code === "permission-denied" ? "notmember" : "error"; authMsg = e && e.message || ""; render();
+  };
+  const ok = s => { if (gen === dataGen && !s.metadata.fromCache){ rememberPath(uid, path); startData.alt = false; } };
   const checkEmpty = () => { S.confirmedEmpty = S.fresh.c && S.fresh.i && !S.cats.length && !S.items.length; };
-  const listen = (name, key, field) => unsubs.push(col(name).onSnapshot({ includeMetadataChanges: true }, s => { S[field] = map(s); S.got[key] = true; if (!s.metadata.fromCache) S.fresh[key] = true; checkEmpty(); render(); }, fail));
+  const listen = (name, key, field) => unsubs.push(col(name).onSnapshot({ includeMetadataChanges: true }, s => { if (gen !== dataGen) return; ok(s); S[field] = map(s); S.got[key] = true; if (!s.metadata.fromCache) S.fresh[key] = true; checkEmpty(); render(); }, fail));
   listen("expenses","e","expenses"); listen("income","n","income"); listen("categories","c","cats");
   listen("inventory","i","items"); listen("trips","t","trips"); listen("cards","k","cards");
-  unsubs.push(col("settings").doc("main").onSnapshot(s => { if (s.exists) S.settings = { currency: "$", ...s.data() }; render(); }, () => {}));
+  unsubs.push(col("settings").doc("main").onSnapshot(s => { if (gen === dataGen && s.exists) S.settings = { currency: "$", ...s.data() }; render(); }, () => {}));
   screen = "app"; render();
 }
 function seed(){
@@ -781,7 +796,7 @@ document.addEventListener("click", async ev => {
   if (act === "signout"){ stopData(); await auth.signOut(); return; }
   if (act === "resend"){ try { await auth.currentUser.sendEmailVerification(); authMsg = "Link sent again."; } catch(e){ authMsg = authError(e); } return render(); }
   if (act === "verified"){ await auth.currentUser.reload(); await auth.currentUser.getIdToken(true); if (auth.currentUser.emailVerified) startData(); else { authMsg = "Not confirmed yet. Open the link in the email first."; render(); } return; }
-  if (act === "retry"){ await auth.currentUser.getIdToken(true); return startData(); }
+  if (act === "retry"){ await auth.currentUser.getIdToken(true); startData.alt = false; return startData(); }
   if (screen !== "app") return;
   if (scanClick(act, b, ev)) return;
   if (act !== "ask-del" && !act.startsWith("del")) ui.confirmDel = null;

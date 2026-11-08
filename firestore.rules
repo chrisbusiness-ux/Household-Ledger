@@ -2,15 +2,33 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Put YOUR email address here, in lowercase. Sign in with it on every device.
-    function isMember() {
-      return request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.token.email.lower() == 'you@example.com';
+    function verified() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function email() {
+      return request.auth.token.email.lower();
+    }
+
+    // 1) YOU: put your own email here (lowercase). Your ledger stays where it is.
+    function isOwner() {
+      return verified() && email() == 'you@example.com';
+    }
+
+    // 2) FRIENDS: add each approved friend's email (lowercase), separated by commas.
+    //    Each friend gets their own private ledger that nobody else can read.
+    function isFriend() {
+      return verified() && email() in [
+        'friend1@example.com',
+        'friend2@example.com'
+      ];
     }
 
     match /households/home/{document=**} {
-      allow read, write: if isMember();
+      allow read, write: if isOwner();
+    }
+
+    match /ledgers/{userId}/{document=**} {
+      allow read, write: if isFriend() && request.auth.uid == userId;
     }
   }
 }

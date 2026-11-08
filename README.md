@@ -81,6 +81,20 @@ If Google retires the AI model, scans will show "The AI model … isn't availabl
 - **Cards:** debit, credit, bank, cash or mobile money, with monthly totals and credit-limit use.
 - **Supplies:** groceries and household items in separate sections, with restocks logged as expenses.
 
+## Letting friends use the app
+Each approved friend gets their own private, empty ledger. They can't see yours and you can't see theirs.
+
+1. In Firebase, open **Firestore → Rules**.
+2. Replace everything with the contents of `firestore.rules` from this folder.
+3. Put **your** email in the `isOwner` line, the same one you used before.
+4. Put your friends' emails in the `isFriend` list: lowercase, each in single quotes, separated by commas.
+5. Click **Publish**.
+6. Send your friends the app's address. Each friend taps **Create an account** with the approved email, confirms it from their inbox, then taps **Add suggestions** to get started.
+
+To add another friend later, add their email to the list and publish again. To remove someone, delete their email and publish. Their data stays stored but they can no longer open it.
+
+Everyone shares your free Firebase and AI allowance. A handful of friends is fine; if lots of people use receipt scanning, it may hit the daily AI limit.
+
 ## Everyday use
 - **Supplies:** tap − when you use one up and + when you add one. **Restock** adds what you bought and, if you enter a cost, logs it as an expense.
 - **Forgot your password:** tap **Forgot password?** on the sign-in screen.
