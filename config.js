@@ -8,3 +8,12 @@ window.FIREBASE_CONFIG = {
   messagingSenderId: "230879683300",
   appId: "1:230879683300:web:016654433e3f595b2082f1"
 };
+
+// ---- AI features (receipt scanning, PDF/photo statements) ----
+// Gemini model used to read receipts and statements. If Google retires it, change this name
+// (Firebase console → AI services → AI Logic lists the current models).
+window.AI_MODEL = "gemini-3.8-flash";
+// Firebase web SDK version used for the AI features.
+window.AI_SDK_VERSION = "13.2.0";
+// Optional: your reCAPTCHA v3 site key, if you set up App Check (guide, part 9). Leave "" if you didn't.
+window.RECAPTCHA_SITE_KEY = "";

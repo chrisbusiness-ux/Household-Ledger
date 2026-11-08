@@ -1,8 +1,8 @@
 // Keeps the app shell available offline. Your household data is synced separately by Firebase.
-const CACHE = "ledger-v1";
+const CACHE = "ledger-v3";
 const FB = "https://www.gstatic.com/firebasejs/10.12.2/";
 const SHELL = [
-  "./", "index.html", "app.js", "config.js", "manifest.webmanifest",
+  "./", "index.html", "scan.js", "app.js", "config.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png",
   FB + "firebase-app-compat.js", FB + "firebase-auth-compat.js", FB + "firebase-firestore-compat.js"
 ];

@@ -56,6 +56,31 @@ These values are meant to be public. Your data is protected by the rules from st
    - **Android (Chrome):** tap **Install app** in the app's header, or ⋮ menu → **Install app** / **Add to Home screen**.
 5. On every other device, open the same address and tap **Sign in** with the same email and password. Don't create a second account. Then install it the same way.
 
+## 9. Turn on AI (receipt scanning and PDF/photo statements)
+The app uses Google's Gemini AI through Firebase to read receipts and statements. It's free on your Spark plan, within Google's daily limits. CSV statement imports work without this.
+
+1. In Firebase, open **AI services → AI Logic** and click **Get started**.
+2. When asked for a provider, choose **Gemini Developer API** (not the paid option) and finish the steps.
+3. Firebase switches on **App Check** for AI, a check that only your app can use it. Pick one:
+   - **Quick start:** go to **Security → App Check → APIs**, find **Firebase AI Logic** and choose **Unenforce**. The AI works straight away. The trade-off is that someone who knows your app's address could use up your free AI allowance. That costs you nothing on the Spark plan, but scans would stop working until the next day.
+   - **Locked down (recommended later):** create a reCAPTCHA v3 key for `chrisbusiness-ux.github.io` at https://www.google.com/recaptcha/admin/create. In **Security → App Check → Apps**, register your web app with **reCAPTCHA** and paste the *secret* key. Then put the *site* key in `config.js` as `RECAPTCHA_SITE_KEY` and upload `config.js` again.
+4. Open the app and tap **Scan receipt** to try it.
+
+If Google retires the AI model, scans will show "The AI model … isn't available". Change `AI_MODEL` in `config.js` to a current model listed under AI Logic, then upload `config.js` again.
+
+## What's new in version 3
+- **New look:** a summary banner with your budget ring, a spending-mix chart, an app-style tab bar on phones and a **+** button for quick actions.
+- **Scan receipt:** photograph a shopping receipt. The AI lists the items, matches them to your supplies (e.g. "Dawn Dish Liquid" → Dish soap), raises the counts, and logs the cost split between Groceries and Household. You check everything before it's saved.
+- **Import statement:** bring in card or bank transactions from a CSV file (best), a PDF or a photo. Rows are categorised using your past choices and common store names, and ones already in your ledger are skipped.
+
+## What's in version 2
+- **Money:** record income and expenses, each on a card or account, and optionally on a trip. Spending is grouped into categories you can open and close (Food → Groceries, Eating out…).
+- **Budget:** monthly budgets per category, organised into groups. You can move a category to another group by typing a new group name.
+- **Reports:** income vs spending by month (tap a month to drill in), where the money went (tap a group, then a category), insights, this month's spending pace with a forecast, budget vs actual, and totals by card and by trip.
+- **Trips:** give each trip dates and a budget. While a trip is on, new expenses are tagged to it automatically.
+- **Cards:** debit, credit, bank, cash or mobile money, with monthly totals and credit-limit use.
+- **Supplies:** groceries and household items in separate sections, with restocks logged as expenses.
+
 ## Everyday use
 - **Supplies:** tap − when you use one up and + when you add one. **Restock** adds what you bought and, if you enter a cost, logs it as an expense.
 - **Forgot your password:** tap **Forgot password?** on the sign-in screen.
@@ -66,6 +91,7 @@ These values are meant to be public. Your data is protected by the rules from st
 | --- | --- |
 | `index.html` | The app's layout and styles |
 | `app.js` | The app's logic: screens, sign-in and syncing |
+| `scan.js` | Receipt scanning, statement import and the quick-add menu |
 | `config.js` | Your Firebase settings (you fill this in) |
 | `firestore.rules` | Who may read and write your data (paste into Firebase) |
 | `manifest.webmanifest`, `icons/` | Name and icon for installing |
